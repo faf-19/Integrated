@@ -200,7 +200,9 @@ Encryption Details:
 
         if (!confirmed) return
 
-        // Decrypt the file using hybrid decryption
+        // For shared files, we need to use the original encryption
+        // In a real system, the file would be re-encrypted with the recipient's public key
+        // For this demo, we'll use the original encryption data
         const decryptedFile = await AdvancedFileCrypto.decryptFileHybrid(
           file.encryptedData,
           file.encryptedAESKey,
@@ -241,13 +243,13 @@ Encryption Details:
       } else {
         // Handle legacy files
         alert(
-          "This file uses legacy encryption. Please ask the owner to re-share with the new hybrid encryption system.",
+          "This file uses legacy encryption. Please ask the owner to re-upload the file with the new hybrid encryption system (RSA+AES) for secure sharing.",
         )
       }
     } catch (error) {
       console.error("Download/decryption failed:", error)
       alert(
-        `Failed to decrypt and download file: ${error.message}\n\nThis could be due to:\n- Invalid private key password\n- Corrupted encryption data\n- Wrong private key`,
+        `Failed to decrypt and download file: ${error.message}\n\nThis could be due to:\n- Invalid private key password\n- Corrupted encryption data\n- Wrong private key\n- File was not properly shared with hybrid encryption`,
       )
     }
   }
