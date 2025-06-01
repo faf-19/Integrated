@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { FileIcon, UploadIcon, HistoryIcon, SearchIcon, Share2Icon } from "lucide-react"
+import { FileIcon, UploadIcon, HistoryIcon, SearchIcon, Share2Icon, KeyIcon } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ import FileList from "@/components/file-list"
 import SharedFileList from "@/components/shared-file-list"
 import ActivityLog from "@/components/activity-log"
 import { testPinataConnection } from "@/lib/ipfs"
+import KeyManagement from "@/components/key-management"
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -214,6 +215,10 @@ export default function Dashboard() {
                       <HistoryIcon className="mr-2 h-4 w-4" />
                       Activity Log
                     </TabsTrigger>
+                    <TabsTrigger value="keys" className="data-[state=active]:bg-gray-600">
+                      <KeyIcon className="mr-2 h-4 w-4" />
+                      Keys
+                    </TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="files" className="p-4">
@@ -232,6 +237,9 @@ export default function Dashboard() {
 
                   <TabsContent value="activity" className="p-4">
                     <ActivityLog />
+                  </TabsContent>
+                  <TabsContent value="keys" className="p-4">
+                    <KeyManagement />
                   </TabsContent>
                 </Tabs>
               </CardContent>

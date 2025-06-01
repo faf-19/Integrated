@@ -9,9 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { UploadIcon, FileIcon, XIcon } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
-import { FileCrypto } from "@/utils/crypto"
 import { uploadToIPFS } from "@/lib/ipfs"
 import { recordActivity } from "@/utils/activity-logger"
+import { AdvancedFileCrypto } from "@/utils/crypto-advanced"
 
 export default function FileUploader() {
   const [file, setFile] = useState<File | null>(null)
@@ -44,25 +44,34 @@ export default function FileUploader() {
       setUploading(true)
       setProgress(10)
 
-      // Step 1: Generate encryption key
-      const encryptionKey = FileCrypto.generateKey()
+      // Check if user has a key pair
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+      const userKeys = localStorage.getItem(`userKeys_${currentUser.email}`)
+
+      if (!userKeys) {
+        alert("You need to generate a key pair first! Go to the Keys tab to create one.")
+        setUploading(false)
+        return
+      }
+
+      const keys = JSON.parse(userKeys)
       setProgress(20)
 
-      // Step 2: Encrypt the file
-      const { encryptedData, iv } = await FileCrypto.encryptFile(file, encryptionKey)
+      // Encrypt the file with user's own public key (so they can decrypt it)
+      const encryptionResult = await AdvancedFileCrypto.encryptFileHybrid(file, keys.publicKey)
       setProgress(40)
 
-      // Step 3: Upload to IPFS via Pinata
-      console.log("Uploading to IPFS via Pinata...")
-      const ipfsHash = await uploadToIPFS(encryptedData)
+      // Upload to IPFS
+      console.log("Uploading to IPFS...")
+      const ipfsHash = await uploadToIPFS(encryptionResult.encryptedData)
       setProgress(70)
 
-      // Step 4: Simulate blockchain transaction
+      // Simulate blockchain transaction
       await new Promise((resolve) => setTimeout(resolve, 1000))
       const blockchainTx = `0x${Math.random().toString(16).substr(2, 40)}`
       setProgress(90)
 
-      // Step 5: Store file metadata with encryption info
+      // Store file metadata with new encryption format
       const existingFiles = JSON.parse(localStorage.getItem("userFiles") || "[]")
       const newFile = {
         id: Date.now().toString(),
@@ -81,11 +90,12 @@ export default function FileUploader() {
         size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
         uploadDate: new Date().toISOString(),
         encrypted: true,
-        // Encryption metadata
-        encryptionKey: encryptionKey,
-        encryptedData: encryptedData,
-        iv: iv,
-        // Real IPFS hash from Pinata
+        // New hybrid encryption metadata
+        encryptedData: encryptionResult.encryptedData,
+        encryptedAESKey: encryptionResult.encryptedAESKey,
+        iv: encryptionResult.iv,
+        encryptionType: "hybrid", // RSA + AES
+        ownerPublicKey: keys.publicKey,
         ipfsHash: ipfsHash,
         blockchainTx: blockchainTx,
         description: description,
@@ -95,7 +105,6 @@ export default function FileUploader() {
       localStorage.setItem("userFiles", JSON.stringify(existingFiles))
 
       // Record activity
-      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
       recordActivity({
         type: "upload",
         fileName: file.name,
@@ -113,7 +122,7 @@ export default function FileUploader() {
       setTimeout(() => {
         setUploading(false)
         alert(
-          `File "${file.name}" encrypted and uploaded successfully!\n\n✅ Encryption: AES-256\n✅ IPFS Hash: ${ipfsHash}\n✅ Blockchain TX: ${newFile.blockchainTx}\n\nYour file is now stored on the decentralized web!`,
+          `File "${file.name}" encrypted and uploaded successfully!\n\n✅ Encryption: RSA-2048 + AES-256\n✅ IPFS Hash: ${ipfsHash}\n✅ Blockchain TX: ${newFile.blockchainTx}\n\nYour file is now securely stored and requires your private key to decrypt!`,
         )
 
         // Reset form
@@ -127,7 +136,7 @@ export default function FileUploader() {
     } catch (error) {
       console.error("Upload failed:", error)
       setUploading(false)
-      alert(`Upload failed: ${error.message}\n\nPlease check your internet connection and try again.`)
+      alert(`Upload failed: ${error.message}\n\nPlease check your key pair and try again.`)
     }
   }
 

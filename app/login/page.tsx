@@ -58,7 +58,7 @@ export default function Login() {
       ) {
         // Create mock user data
         const userData = {
-          id: 1,
+          id: formData.email === "demo@example.com" ? 1 : 2,
           fullName: formData.email === "demo@example.com" ? "Demo User" : "Test User",
           email: formData.email,
         }
@@ -72,27 +72,32 @@ export default function Login() {
         return
       }
 
+      // If credentials don't match the demo accounts, show error
+      setError("Invalid email or password. Try using the demo credentials shown below.")
+      setLoading(false)
+      return
+
       // If not using the demo credentials, try the API
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+      // const response = await fetch("/api/auth/login", {
+      //   method: "POST",
+      //   headers: {
+      //     "Content-Type": "application/json",
+      //   },
+      //   body: JSON.stringify(formData),
+      // })
 
-      const data = await response.json()
+      // const data = await response.json()
 
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed")
-      }
+      // if (!response.ok) {
+      //   throw new Error(data.error || "Login failed")
+      // }
 
-      // Store user data in localStorage
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem("currentUser", JSON.stringify(data.user))
+      // // Store user data in localStorage
+      // localStorage.setItem("isAuthenticated", "true")
+      // localStorage.setItem("currentUser", JSON.stringify(data.user))
 
-      // Redirect to dashboard
-      router.push("/dashboard")
+      // // Redirect to dashboard
+      // router.push("/dashboard")
     } catch (err: any) {
       console.error("Login error:", err)
       setError(err.message || "Login failed. Please try again.")
@@ -158,13 +163,14 @@ export default function Login() {
             </div>
 
             <div className="bg-gray-700 p-3 rounded-md border border-gray-600 text-sm">
-              <p className="font-medium mb-1">Demo Credentials:</p>
+              <p className="font-medium mb-1 text-emerald-400">Demo Credentials:</p>
               <p>
                 Email: <span className="text-emerald-400">demo@example.com</span>
               </p>
               <p>
                 Password: <span className="text-emerald-400">password123</span>
               </p>
+              <p className="mt-1 text-xs text-gray-400">You can also use: test@astu.edu.et / test123</p>
             </div>
 
             <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>

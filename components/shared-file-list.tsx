@@ -16,8 +16,8 @@ import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { FileCrypto } from "@/utils/crypto"
 import { recordActivity } from "@/utils/activity-logger"
+import { AdvancedFileCrypto } from "@/utils/crypto-advanced"
 
 interface SharedFileListProps {
   searchQuery: string
@@ -171,63 +171,83 @@ Encryption Details:
         return
       }
 
-      if (!file.encrypted || !file.encryptedData) {
-        alert("This file is not encrypted or data is missing.")
-        return
+      // Check if this is a hybrid encrypted file
+      if (file.encryptionType === "hybrid") {
+        if (!file.encryptedData || !file.encryptedAESKey) {
+          alert("This file is missing encryption data.")
+          return
+        }
+
+        // Check if user has keys
+        const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+        const userKeys = localStorage.getItem(`userKeys_${currentUser.email}`)
+
+        if (!userKeys) {
+          alert("You need to generate a key pair first! Go to the Keys tab to create one.")
+          return
+        }
+
+        // Request private key from user with password
+        const privateKey = await (window as any).requestPrivateKey?.()
+        if (!privateKey) {
+          return // User cancelled or invalid password
+        }
+
+        // Show decryption process
+        const confirmed = confirm(
+          `Decrypt and download "${file.name}" shared by ${file.sharedBy}?\n\nThis will:\n1. Use your private key to decrypt the file\n2. Verify blockchain integrity\n3. Download the original file\n\nProceed?`,
+        )
+
+        if (!confirmed) return
+
+        // Decrypt the file using hybrid decryption
+        const decryptedFile = await AdvancedFileCrypto.decryptFileHybrid(
+          file.encryptedData,
+          file.encryptedAESKey,
+          file.iv,
+          privateKey,
+          file.originalName || file.name,
+          file.mimeType || "application/octet-stream",
+        )
+
+        // Create download link
+        const downloadUrl = URL.createObjectURL(decryptedFile)
+
+        // Create temporary download link
+        const link = document.createElement("a")
+        link.href = downloadUrl
+        link.download = decryptedFile.name
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        // Clean up the URL
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+
+        // Record download activity
+        recordActivity({
+          type: "download",
+          fileName: file.name,
+          user: currentUser.fullName || "You",
+          sharedBy: file.sharedBy,
+          timestamp: new Date().toISOString(),
+          status: "success",
+          blockchainTx: file.blockchainTx || `0x${Math.random().toString(16).substr(2, 40)}`,
+        })
+
+        alert(
+          `File "${file.name}" decrypted and downloaded successfully!\n\nThe file has been decrypted using your private key and is now available in your downloads folder.`,
+        )
+      } else {
+        // Handle legacy files
+        alert(
+          "This file uses legacy encryption. Please ask the owner to re-share with the new hybrid encryption system.",
+        )
       }
-
-      // Show decryption process
-      const confirmed = confirm(
-        `Decrypt and download "${file.name}" shared by ${file.sharedBy}?\n\nThis will:\n1. Decrypt the file using the shared encryption key\n2. Verify blockchain integrity\n3. Download the original file\n\nProceed?`,
-      )
-
-      if (!confirmed) return
-
-      // Simulate blockchain verification
-      console.log("Verifying blockchain transaction:", file.blockchainTx)
-
-      // Decrypt the file using the shared encryption key
-      const decryptedFile = await FileCrypto.decryptFile(
-        file.encryptedData,
-        file.encryptionKey,
-        file.iv,
-        file.originalName || file.name,
-        file.mimeType || "application/octet-stream",
-      )
-
-      // Create download link
-      const downloadUrl = FileCrypto.createDownloadLink(decryptedFile)
-
-      // Create temporary download link
-      const link = document.createElement("a")
-      link.href = downloadUrl
-      link.download = decryptedFile.name
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-
-      // Clean up the URL
-      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
-
-      // Record download activity
-      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
-      recordActivity({
-        type: "download",
-        fileName: file.name,
-        user: currentUser.fullName || "You",
-        sharedBy: file.sharedBy,
-        timestamp: new Date().toISOString(),
-        status: "success",
-        blockchainTx: file.blockchainTx || `0x${Math.random().toString(16).substr(2, 40)}`,
-      })
-
-      alert(
-        `File "${file.name}" decrypted and downloaded successfully!\n\nThe file has been decrypted using the shared encryption key and is now available in your downloads folder.`,
-      )
     } catch (error) {
       console.error("Download/decryption failed:", error)
       alert(
-        `Failed to decrypt and download file: ${error.message}\n\nThis could be due to:\n- Corrupted encryption data\n- Invalid shared encryption key\n- Network issues`,
+        `Failed to decrypt and download file: ${error.message}\n\nThis could be due to:\n- Invalid private key password\n- Corrupted encryption data\n- Wrong private key`,
       )
     }
   }
