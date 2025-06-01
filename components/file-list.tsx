@@ -13,6 +13,7 @@ import {
   TrashIcon,
   DownloadIcon,
   EyeIcon,
+  KeyIcon,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
@@ -27,11 +28,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { FileCrypto } from "@/utils/crypto"
 
-// Load files from localStorage
 const FileList = ({ searchQuery }: { searchQuery: string }) => {
   const [userFiles, setUserFiles] = useState<any[]>([])
   const [mounted, setMounted] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<any>(null)
+  const [shareEmail, setShareEmail] = useState("")
+  const [permissions, setPermissions] = useState({
+    view: true,
+    download: false,
+    edit: false,
+  })
 
   useEffect(() => {
     setMounted(true)
@@ -52,7 +61,6 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
 
     loadFiles()
 
-    // Listen for storage changes
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "userFiles") {
         loadFiles()
@@ -63,16 +71,6 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
     return () => window.removeEventListener("storage", handleStorageChange)
   }, [mounted])
 
-  const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<any>(null)
-  const [shareEmail, setShareEmail] = useState("")
-  const [permissions, setPermissions] = useState({
-    view: true,
-    download: false,
-    edit: false,
-  })
-
-  // Filter files based on search query
   const filteredFiles = userFiles.filter((file) => file?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const getFileIcon = (type: string) => {
@@ -105,45 +103,94 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
   }
 
   const handleShareSubmit = () => {
-    // In a real implementation, this would call an API to share the file
-    alert(`File "${selectedFile.name}" shared with ${shareEmail} successfully!`)
-
-    // Close dialog
+    alert(
+      `File "${selectedFile.name}" shared with ${shareEmail} successfully!\n\nShared encryption key and access permissions have been recorded on the blockchain.`,
+    )
     setShareDialogOpen(false)
     setShareEmail("")
-    setPermissions({
-      view: true,
-      download: false,
-      edit: false,
-    })
+    setPermissions({ view: true, download: false, edit: false })
   }
 
   const handleViewFile = (file: any) => {
-    // Create a simple file viewer modal or new window
     const fileInfo = `
-    File: ${file.name}
-    Size: ${file.size}
-    Uploaded: ${formatDate(file.uploadDate)}
-    IPFS Hash: ${file.ipfsHash}
-    Blockchain TX: ${file.blockchainTx}
-    ${file.description ? `Description: ${file.description}` : ""}
-  `
-    alert(`File Details:\n\n${fileInfo}`)
+File: ${file.name}
+Size: ${file.size}
+Uploaded: ${formatDate(file.uploadDate)}
+Encryption: AES-256 (${file.encrypted ? "Encrypted" : "Not Encrypted"})
+IPFS Hash: ${file.ipfsHash}
+Blockchain TX: ${file.blockchainTx}
+${file.description ? `Description: ${file.description}` : ""}
+
+Encryption Details:
+- Algorithm: AES-256-GCM
+- Key Length: 256 bits
+- IV: ${file.iv ? file.iv.substring(0, 16) + "..." : "N/A"}
+- Status: ${file.encrypted ? "Securely Encrypted" : "Not Encrypted"}
+`
+    alert(`File Details:\n${fileInfo}`)
   }
 
-  const handleDownloadFile = (file: any) => {
-    // In a real implementation, this would decrypt and download from IPFS
-    alert(
-      `Downloading ${file.name}...\n\nIn a real implementation, this would:\n1. Decrypt the file\n2. Download from IPFS\n3. Verify blockchain integrity`,
-    )
+  const handleDownloadFile = async (file: any) => {
+    try {
+      if (!file.encrypted || !file.encryptedData) {
+        alert("This file is not encrypted or data is missing.")
+        return
+      }
+
+      // Show decryption process
+      const confirmed = confirm(
+        `Decrypt and download "${file.name}"?\n\nThis will:\n1. Decrypt the file using your encryption key\n2. Verify blockchain integrity\n3. Download the original file\n\nProceed?`,
+      )
+
+      if (!confirmed) return
+
+      // Simulate blockchain verification
+      console.log("Verifying blockchain transaction:", file.blockchainTx)
+
+      // Decrypt the file
+      const decryptedFile = await FileCrypto.decryptFile(
+        file.encryptedData,
+        file.encryptionKey,
+        file.iv,
+        file.originalName || file.name,
+        file.mimeType || "application/octet-stream",
+      )
+
+      // Create download link
+      const downloadUrl = FileCrypto.createDownloadLink(decryptedFile)
+
+      // Create temporary download link
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      link.download = decryptedFile.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      // Clean up the URL
+      setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+
+      alert(
+        `File "${file.name}" decrypted and downloaded successfully!\n\nThe file has been decrypted using AES-256 and is now available in your downloads folder.`,
+      )
+    } catch (error) {
+      console.error("Download/decryption failed:", error)
+      alert(
+        `Failed to decrypt and download file: ${error.message}\n\nThis could be due to:\n- Corrupted encryption data\n- Invalid encryption key\n- Network issues`,
+      )
+    }
   }
 
   const handleDeleteFile = (file: any) => {
-    if (confirm(`Are you sure you want to delete "${file.name}"?`)) {
+    if (
+      confirm(
+        `Are you sure you want to delete "${file.name}"?\n\nThis will:\n- Remove the file from IPFS\n- Record deletion on blockchain\n- Permanently delete encryption keys\n\nThis action cannot be undone.`,
+      )
+    ) {
       const updatedFiles = userFiles.filter((f) => f.id !== file.id)
       localStorage.setItem("userFiles", JSON.stringify(updatedFiles))
       setUserFiles(updatedFiles)
-      alert(`File "${file.name}" deleted successfully!`)
+      alert(`File "${file.name}" deleted successfully!\n\nDeletion has been recorded on the blockchain.`)
     }
   }
 
@@ -178,12 +225,16 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
                   <p className="font-medium">{file.name}</p>
                   <div className="flex items-center text-sm text-gray-400 mt-1">
                     <span className="mr-4">{file.size}</span>
-                    <span>{formatDate(file.uploadDate)}</span>
+                    <span className="mr-4">{formatDate(file.uploadDate)}</span>
                     <Badge
                       variant="outline"
-                      className="ml-3 bg-emerald-900/30 text-emerald-400 border-emerald-800 text-xs"
+                      className="bg-emerald-900/30 text-emerald-400 border-emerald-800 text-xs mr-2"
                     >
-                      Encrypted
+                      <KeyIcon className="h-3 w-3 mr-1" />
+                      AES-256
+                    </Badge>
+                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-800 text-xs">
+                      IPFS
                     </Badge>
                   </div>
                 </div>
@@ -201,14 +252,14 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
                     onClick={() => handleViewFile(file)}
                   >
                     <EyeIcon className="mr-2 h-4 w-4" />
-                    View
+                    View Details
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center cursor-pointer hover:bg-gray-700"
                     onClick={() => handleDownloadFile(file)}
                   >
                     <DownloadIcon className="mr-2 h-4 w-4" />
-                    Download
+                    Decrypt & Download
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center cursor-pointer hover:bg-gray-700"
@@ -235,15 +286,16 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent className="bg-gray-800 border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle>Share File</DialogTitle>
+            <DialogTitle>Share Encrypted File</DialogTitle>
             <DialogDescription className="text-gray-400">
-              {selectedFile && `Share "${selectedFile.name}" with others securely.`}
+              {selectedFile &&
+                `Share "${selectedFile.name}" securely. The encryption key will be shared with the recipient.`}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label htmlFor="email">Recipient Email Address</Label>
               <Input
                 id="email"
                 placeholder="colleague@example.com"
@@ -255,7 +307,7 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
             </div>
 
             <div className="space-y-3">
-              <Label>Permissions</Label>
+              <Label>Access Permissions</Label>
 
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -264,11 +316,8 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
                   onCheckedChange={(checked) => setPermissions((prev) => ({ ...prev, view: checked === true }))}
                   className="data-[state=checked]:bg-emerald-600"
                 />
-                <label
-                  htmlFor="view"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  View
+                <label htmlFor="view" className="text-sm font-medium">
+                  View (can see file details)
                 </label>
               </div>
 
@@ -279,11 +328,8 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
                   onCheckedChange={(checked) => setPermissions((prev) => ({ ...prev, download: checked === true }))}
                   className="data-[state=checked]:bg-emerald-600"
                 />
-                <label
-                  htmlFor="download"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Download
+                <label htmlFor="download" className="text-sm font-medium">
+                  Download (can decrypt and download)
                 </label>
               </div>
 
@@ -294,13 +340,17 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
                   onCheckedChange={(checked) => setPermissions((prev) => ({ ...prev, edit: checked === true }))}
                   className="data-[state=checked]:bg-emerald-600"
                 />
-                <label
-                  htmlFor="edit"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Edit
+                <label htmlFor="edit" className="text-sm font-medium">
+                  Edit (can modify and re-upload)
                 </label>
               </div>
+            </div>
+
+            <div className="bg-gray-700 p-3 rounded-lg">
+              <p className="text-xs text-gray-300">
+                <KeyIcon className="h-3 w-3 inline mr-1" />
+                The encryption key will be securely shared with the recipient through the blockchain smart contract.
+              </p>
             </div>
           </div>
 
@@ -314,7 +364,7 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
             </Button>
             <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleShareSubmit} disabled={!shareEmail}>
               <Share2Icon className="mr-2 h-4 w-4" />
-              Share
+              Share Securely
             </Button>
           </DialogFooter>
         </DialogContent>

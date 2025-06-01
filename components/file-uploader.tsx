@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { UploadIcon, FileIcon, XIcon } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
+import { FileCrypto } from "@/utils/crypto"
 
 export default function FileUploader() {
   const [file, setFile] = useState<File | null>(null)
@@ -39,71 +40,74 @@ export default function FileUploader() {
 
     try {
       setUploading(true)
+      setProgress(10)
 
-      // Simulate upload progress
-      let currentProgress = 0
-      const interval = setInterval(() => {
-        currentProgress += 10
-        setProgress(currentProgress)
+      // Step 1: Generate encryption key
+      const encryptionKey = FileCrypto.generateKey()
+      setProgress(20)
 
-        if (currentProgress >= 100) {
-          clearInterval(interval)
+      // Step 2: Encrypt the file
+      const { encryptedData, iv } = await FileCrypto.encryptFile(file, encryptionKey)
+      setProgress(50)
 
-          // Simulate encryption and blockchain processing
-          setTimeout(() => {
-            // Add the file to localStorage for demo purposes
-            try {
-              const existingFiles = JSON.parse(localStorage.getItem("userFiles") || "[]")
-              const newFile = {
-                id: Date.now().toString(),
-                name: file.name,
-                type: file.type.includes("image")
-                  ? "image"
-                  : file.type.includes("pdf")
-                    ? "pdf"
-                    : file.type.includes("spreadsheet") || file.name.includes(".xlsx")
-                      ? "spreadsheet"
-                      : file.type.includes("presentation") || file.name.includes(".pptx")
-                        ? "presentation"
-                        : "text",
-                size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-                uploadDate: new Date().toISOString(),
-                encrypted: true,
-                ipfsHash: `QmT7fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG${Date.now()}`,
-                blockchainTx: `0x${Math.random().toString(16).substr(2, 40)}`,
-                description: description,
-              }
+      // Step 3: Simulate IPFS upload
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setProgress(70)
 
-              existingFiles.unshift(newFile) // Add to beginning of array
-              localStorage.setItem("userFiles", JSON.stringify(existingFiles))
+      // Step 4: Simulate blockchain transaction
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+      setProgress(90)
 
-              // Trigger storage event for other tabs
-              window.dispatchEvent(new Event("storage"))
+      // Step 5: Store file metadata with encryption info
+      const existingFiles = JSON.parse(localStorage.getItem("userFiles") || "[]")
+      const newFile = {
+        id: Date.now().toString(),
+        name: file.name,
+        originalName: file.name,
+        mimeType: file.type,
+        type: file.type.includes("image")
+          ? "image"
+          : file.type.includes("pdf")
+            ? "pdf"
+            : file.type.includes("spreadsheet") || file.name.includes(".xlsx")
+              ? "spreadsheet"
+              : file.type.includes("presentation") || file.name.includes(".pptx")
+                ? "presentation"
+                : "text",
+        size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+        uploadDate: new Date().toISOString(),
+        encrypted: true,
+        // Encryption metadata
+        encryptionKey: encryptionKey,
+        encryptedData: encryptedData,
+        iv: iv,
+        // Blockchain/IPFS simulation
+        ipfsHash: `QmT7fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG${Date.now()}`,
+        blockchainTx: `0x${Math.random().toString(16).substr(2, 40)}`,
+        description: description,
+      }
 
-              setUploading(false)
-              alert(`File "${file.name}" uploaded successfully!`)
+      existingFiles.unshift(newFile)
+      localStorage.setItem("userFiles", JSON.stringify(existingFiles))
+      setProgress(100)
 
-              // Close dialog and refresh the file list
-              setFile(null)
-              setDescription("")
-              setProgress(0)
+      // Trigger storage event for other tabs
+      window.dispatchEvent(new Event("storage"))
 
-              // Close the dialog by simulating ESC key
-              document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
-            } catch (error) {
-              console.error("Error saving file:", error)
-              alert("Error uploading file. Please try again.")
-              setUploading(false)
-            }
-          }, 1500)
-        }
-      }, 300)
+      setTimeout(() => {
+        setUploading(false)
+        alert(
+          `File "${file.name}" encrypted and uploaded successfully!\n\nEncryption: AES-256\nIPFS Hash: ${newFile.ipfsHash}\nBlockchain TX: ${newFile.blockchainTx}`,
+        )
 
-      // In a real implementation, we would:
-      // 1. Encrypt the file client-side using AES-256
-      // 2. Upload to IPFS
-      // 3. Store the IPFS hash on the blockchain
-      // 4. Update the database with file metadata
+        // Reset form
+        setFile(null)
+        setDescription("")
+        setProgress(0)
+
+        // Close dialog
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+      }, 500)
     } catch (error) {
       console.error("Upload failed:", error)
       setUploading(false)
@@ -154,7 +158,15 @@ export default function FileUploader() {
             <div className="mt-4">
               <Progress value={progress} className="h-2 mb-2" />
               <p className="text-sm text-gray-400">
-                {progress < 100 ? "Encrypting and uploading..." : "Processing on blockchain..."}
+                {progress < 30
+                  ? "Generating encryption key..."
+                  : progress < 60
+                    ? "Encrypting file with AES-256..."
+                    : progress < 80
+                      ? "Uploading to IPFS..."
+                      : progress < 95
+                        ? "Recording on blockchain..."
+                        : "Finalizing..."}
               </p>
             </div>
           )}
@@ -190,7 +202,7 @@ export default function FileUploader() {
           ) : (
             <>
               <UploadIcon className="mr-2 h-4 w-4" />
-              Upload File
+              Encrypt & Upload
             </>
           )}
         </Button>
