@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   FileIcon,
@@ -28,65 +28,41 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 
-// Mock file data
-const mockFiles = [
-  {
-    id: "1",
-    name: "Project_Proposal.pdf",
-    type: "pdf",
-    size: "2.4 MB",
-    uploadDate: "2025-05-28T14:32:00",
-    encrypted: true,
-    ipfsHash: "QmT7fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG1",
-    blockchainTx: "0x3a8e7f9a2d5b4c6e8f1d2a3b4c5d6e7f8a9b0c1d",
-  },
-  {
-    id: "2",
-    name: "Financial_Report_Q2.xlsx",
-    type: "spreadsheet",
-    size: "1.8 MB",
-    uploadDate: "2025-05-25T09:15:00",
-    encrypted: true,
-    ipfsHash: "QmX9fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG2",
-    blockchainTx: "0x4b9f8e0a3c6d5b4a7c8e9d0f1a2b3c4d5e6f7a8b9",
-  },
-  {
-    id: "3",
-    name: "Team_Photo.jpg",
-    type: "image",
-    size: "3.2 MB",
-    uploadDate: "2025-05-20T16:45:00",
-    encrypted: true,
-    ipfsHash: "QmZ0fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG3",
-    blockchainTx: "0x5c0f9e1a4d7b6c5a8d9e0f1a2b3c4d5e6f7a8b9c0",
-  },
-  {
-    id: "4",
-    name: "Presentation_Draft.pptx",
-    type: "presentation",
-    size: "5.7 MB",
-    uploadDate: "2025-05-15T11:20:00",
-    encrypted: true,
-    ipfsHash: "QmA1fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG4",
-    blockchainTx: "0x6d1e0f2a5b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e",
-  },
-  {
-    id: "5",
-    name: "Meeting_Notes.txt",
-    type: "text",
-    size: "0.1 MB",
-    uploadDate: "2025-05-10T13:50:00",
-    encrypted: true,
-    ipfsHash: "QmB2fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG5",
-    blockchainTx: "0x7e2f1g3a6b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e",
-  },
-]
+// Load files from localStorage
+const FileList = ({ searchQuery }: { searchQuery: string }) => {
+  const [userFiles, setUserFiles] = useState<any[]>([])
+  const [mounted, setMounted] = useState(false)
 
-interface FileListProps {
-  searchQuery: string
-}
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-export default function FileList({ searchQuery }: FileListProps) {
+  useEffect(() => {
+    if (!mounted) return
+
+    const loadFiles = () => {
+      try {
+        const files = JSON.parse(localStorage.getItem("userFiles") || "[]")
+        setUserFiles(files)
+      } catch (error) {
+        console.error("Error loading files:", error)
+        setUserFiles([])
+      }
+    }
+
+    loadFiles()
+
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "userFiles") {
+        loadFiles()
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [mounted])
+
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [selectedFile, setSelectedFile] = useState<any>(null)
   const [shareEmail, setShareEmail] = useState("")
@@ -97,7 +73,7 @@ export default function FileList({ searchQuery }: FileListProps) {
   })
 
   // Filter files based on search query
-  const filteredFiles = mockFiles.filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredFiles = userFiles.filter((file) => file?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
 
   const getFileIcon = (type: string) => {
     switch (type) {
@@ -130,9 +106,7 @@ export default function FileList({ searchQuery }: FileListProps) {
 
   const handleShareSubmit = () => {
     // In a real implementation, this would call an API to share the file
-    console.log("Sharing file:", selectedFile)
-    console.log("With email:", shareEmail)
-    console.log("Permissions:", permissions)
+    alert(`File "${selectedFile.name}" shared with ${shareEmail} successfully!`)
 
     // Close dialog
     setShareDialogOpen(false)
@@ -142,6 +116,43 @@ export default function FileList({ searchQuery }: FileListProps) {
       download: false,
       edit: false,
     })
+  }
+
+  const handleViewFile = (file: any) => {
+    // Create a simple file viewer modal or new window
+    const fileInfo = `
+    File: ${file.name}
+    Size: ${file.size}
+    Uploaded: ${formatDate(file.uploadDate)}
+    IPFS Hash: ${file.ipfsHash}
+    Blockchain TX: ${file.blockchainTx}
+    ${file.description ? `Description: ${file.description}` : ""}
+  `
+    alert(`File Details:\n\n${fileInfo}`)
+  }
+
+  const handleDownloadFile = (file: any) => {
+    // In a real implementation, this would decrypt and download from IPFS
+    alert(
+      `Downloading ${file.name}...\n\nIn a real implementation, this would:\n1. Decrypt the file\n2. Download from IPFS\n3. Verify blockchain integrity`,
+    )
+  }
+
+  const handleDeleteFile = (file: any) => {
+    if (confirm(`Are you sure you want to delete "${file.name}"?`)) {
+      const updatedFiles = userFiles.filter((f) => f.id !== file.id)
+      localStorage.setItem("userFiles", JSON.stringify(updatedFiles))
+      setUserFiles(updatedFiles)
+      alert(`File "${file.name}" deleted successfully!`)
+    }
+  }
+
+  if (!mounted) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -187,14 +198,14 @@ export default function FileList({ searchQuery }: FileListProps) {
                 <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700 text-white">
                   <DropdownMenuItem
                     className="flex items-center cursor-pointer hover:bg-gray-700"
-                    onClick={() => console.log("View file:", file)}
+                    onClick={() => handleViewFile(file)}
                   >
                     <EyeIcon className="mr-2 h-4 w-4" />
                     View
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center cursor-pointer hover:bg-gray-700"
-                    onClick={() => console.log("Download file:", file)}
+                    onClick={() => handleDownloadFile(file)}
                   >
                     <DownloadIcon className="mr-2 h-4 w-4" />
                     Download
@@ -208,7 +219,7 @@ export default function FileList({ searchQuery }: FileListProps) {
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="flex items-center cursor-pointer text-red-500 hover:bg-gray-700 hover:text-red-500"
-                    onClick={() => console.log("Delete file:", file)}
+                    onClick={() => handleDeleteFile(file)}
                   >
                     <TrashIcon className="mr-2 h-4 w-4" />
                     Delete
@@ -311,3 +322,5 @@ export default function FileList({ searchQuery }: FileListProps) {
     </div>
   )
 }
+
+export default FileList

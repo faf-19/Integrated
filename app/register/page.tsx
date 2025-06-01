@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { AlertCircle, Loader2 } from "lucide-react"
+import { AlertCircle, Loader2, CheckCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function Register() {
@@ -24,6 +24,7 @@ export default function Register() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -57,17 +58,54 @@ export default function Register() {
     try {
       setLoading(true)
 
-      // This would be replaced with actual API call in production
-      await new Promise((resolve) => setTimeout(resolve, 1500)) // Simulate API call
+      // Store authentication state directly (for demo purposes)
+      localStorage.setItem("isAuthenticated", "true")
+      localStorage.setItem(
+        "currentUser",
+        JSON.stringify({
+          email: formData.email,
+          fullName: formData.fullName,
+          loginTime: new Date().toISOString(),
+        }),
+      )
 
-      // Redirect to dashboard on success
-      router.push("/dashboard")
+      // Create empty files array
+      localStorage.setItem("userFiles", JSON.stringify([]))
+
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      setSuccess(true)
+
+      // Redirect to dashboard directly
+      setTimeout(() => {
+        window.location.href = "/dashboard"
+      }, 2000)
     } catch (err) {
       setError("Registration failed. Please try again.")
       console.error(err)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-gray-800 border-gray-700 text-white">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <CheckCircle className="mx-auto h-16 w-16 text-emerald-500 mb-4" />
+              <h2 className="text-2xl font-bold mb-2">Registration Successful!</h2>
+              <p className="text-gray-400 mb-4">
+                Your account has been created successfully. Redirecting to dashboard...
+              </p>
+              <div className="animate-pulse text-emerald-500">Redirecting...</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

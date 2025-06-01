@@ -51,12 +51,53 @@ export default function FileUploader() {
 
           // Simulate encryption and blockchain processing
           setTimeout(() => {
-            setUploading(false)
-            // Here we would redirect or show success message
-            window.location.reload() // For demo purposes
+            // Add the file to localStorage for demo purposes
+            try {
+              const existingFiles = JSON.parse(localStorage.getItem("userFiles") || "[]")
+              const newFile = {
+                id: Date.now().toString(),
+                name: file.name,
+                type: file.type.includes("image")
+                  ? "image"
+                  : file.type.includes("pdf")
+                    ? "pdf"
+                    : file.type.includes("spreadsheet") || file.name.includes(".xlsx")
+                      ? "spreadsheet"
+                      : file.type.includes("presentation") || file.name.includes(".pptx")
+                        ? "presentation"
+                        : "text",
+                size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+                uploadDate: new Date().toISOString(),
+                encrypted: true,
+                ipfsHash: `QmT7fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG${Date.now()}`,
+                blockchainTx: `0x${Math.random().toString(16).substr(2, 40)}`,
+                description: description,
+              }
+
+              existingFiles.unshift(newFile) // Add to beginning of array
+              localStorage.setItem("userFiles", JSON.stringify(existingFiles))
+
+              // Trigger storage event for other tabs
+              window.dispatchEvent(new Event("storage"))
+
+              setUploading(false)
+              alert(`File "${file.name}" uploaded successfully!`)
+
+              // Close dialog and refresh the file list
+              setFile(null)
+              setDescription("")
+              setProgress(0)
+
+              // Close the dialog by simulating ESC key
+              document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+            } catch (error) {
+              console.error("Error saving file:", error)
+              alert("Error uploading file. Please try again.")
+              setUploading(false)
+            }
           }, 1500)
         }
-      }, 500)
+      }, 300)
 
       // In a real implementation, we would:
       // 1. Encrypt the file client-side using AES-256
@@ -66,6 +107,7 @@ export default function FileUploader() {
     } catch (error) {
       console.error("Upload failed:", error)
       setUploading(false)
+      alert("Upload failed. Please try again.")
     }
   }
 
@@ -132,7 +174,12 @@ export default function FileUploader() {
       </div>
 
       <DialogFooter>
-        <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700" disabled={uploading}>
+        <Button
+          variant="outline"
+          className="border-gray-600 text-gray-300 hover:bg-gray-700"
+          disabled={uploading}
+          onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))}
+        >
           Cancel
         </Button>
         <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={handleUpload} disabled={!file || uploading}>

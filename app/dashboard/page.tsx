@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
+import { useRouter } from "next/navigation"
 import FileUploader from "@/components/file-uploader"
 import FileList from "@/components/file-list"
 import SharedFileList from "@/components/shared-file-list"
@@ -23,11 +24,46 @@ import ActivityLog from "@/components/activity-log"
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("files")
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [mounted, setMounted] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    // Check if user is authenticated
+    const authStatus = localStorage.getItem("isAuthenticated")
+    const userData = localStorage.getItem("currentUser")
+
+    if (authStatus !== "true" || !userData) {
+      router.push("/login")
+      return
+    }
+
+    try {
+      setCurrentUser(JSON.parse(userData))
+    } catch (error) {
+      console.error("Error parsing user data:", error)
+      router.push("/login")
+    }
+  }, [mounted, router])
 
   // Mock data for storage usage
   const storageUsed = 2.7 // GB
   const storageTotal = 10 // GB
   const storagePercentage = (storageUsed / storageTotal) * 100
+
+  if (!mounted || !currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white flex items-center justify-center">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white pb-12">
@@ -35,7 +71,7 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-gray-400">Manage your secure files</p>
+            <p className="text-gray-400">Welcome back, {currentUser.fullName}!</p>
           </div>
 
           <div className="flex items-center gap-4 w-full md:w-auto">

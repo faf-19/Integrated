@@ -2,24 +2,35 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { AlertCircle, Loader2 } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { AlertCircle, Loader2, CheckCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function Login() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showRegistrationSuccess, setShowRegistrationSuccess] = useState(false)
+
+  useEffect(() => {
+    // Check if user was redirected from registration
+    if (searchParams.get("registered") === "true") {
+      setShowRegistrationSuccess(true)
+      // Hide the message after 5 seconds
+      setTimeout(() => setShowRegistrationSuccess(false), 5000)
+    }
+  }, [searchParams])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -39,13 +50,53 @@ export default function Login() {
     try {
       setLoading(true)
 
-      // This would be replaced with actual API call in production
-      await new Promise((resolve) => setTimeout(resolve, 1500)) // Simulate API call
+      // For demo purposes, allow any login
+      // Store authentication state with user info
+      localStorage.setItem("isAuthenticated", "true")
+      localStorage.setItem(
+        "currentUser",
+        JSON.stringify({
+          email: formData.email,
+          fullName: formData.email
+            .split("@")[0]
+            .replace(/[.]/g, " ")
+            .replace(/\b\w/g, (l) => l.toUpperCase()),
+          loginTime: new Date().toISOString(),
+        }),
+      )
 
-      // Redirect to dashboard on success
-      router.push("/dashboard")
+      // Create some sample files for the user
+      const sampleFiles = [
+        {
+          id: "1",
+          name: "Project_Proposal.pdf",
+          type: "pdf",
+          size: "2.4 MB",
+          uploadDate: new Date().toISOString(),
+          encrypted: true,
+          ipfsHash: "QmT7fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG1",
+          blockchainTx: "0x3a8e7f9a2d5b4c6e8f1d2a3b4c5d6e7f8a9b0c1d",
+        },
+        {
+          id: "2",
+          name: "Financial_Report_Q2.xlsx",
+          type: "spreadsheet",
+          size: "1.8 MB",
+          uploadDate: new Date(Date.now() - 86400000).toISOString(), // Yesterday
+          encrypted: true,
+          ipfsHash: "QmX9fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG2",
+          blockchainTx: "0x4b9f8e0a3c6d5b4a7c8e9d0f1a2b3c4d5e6f7a8b9",
+        },
+      ]
+      localStorage.setItem("userFiles", JSON.stringify(sampleFiles))
+
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      // Force a reload to update the navbar state
+      window.location.href = "/dashboard"
     } catch (err) {
-      setError("Invalid email or password")
+      setError("Login failed. Please try again.")
       console.error(err)
     } finally {
       setLoading(false)
@@ -62,6 +113,13 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {showRegistrationSuccess && (
+            <Alert className="bg-emerald-900 border-emerald-800 text-white mb-4">
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>Registration successful! Please login with your credentials.</AlertDescription>
+            </Alert>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <Alert variant="destructive" className="bg-red-900 border-red-800 text-white">
