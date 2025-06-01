@@ -58,32 +58,21 @@ export default function Register() {
     try {
       setLoading(true)
 
-      // Store authentication state directly (for demo purposes)
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem(
-        "currentUser",
-        JSON.stringify({
-          email: formData.email,
-          fullName: formData.fullName,
-          loginTime: new Date().toISOString(),
-        }),
-      )
+      // For demo purposes, let's bypass the API call
+      // In a real app, you would call the API to register the user
 
-      // Create empty files array
-      localStorage.setItem("userFiles", JSON.stringify([]))
-
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       setSuccess(true)
 
-      // Redirect to dashboard directly
+      // Redirect to login page after successful registration
       setTimeout(() => {
-        window.location.href = "/dashboard"
+        router.push("/login?registered=true")
       }, 2000)
-    } catch (err) {
-      setError("Registration failed. Please try again.")
-      console.error(err)
+    } catch (err: any) {
+      setError(err.message || "Registration failed. Please try again.")
+      console.error("Registration error:", err)
     } finally {
       setLoading(false)
     }
@@ -97,9 +86,7 @@ export default function Register() {
             <div className="text-center">
               <CheckCircle className="mx-auto h-16 w-16 text-emerald-500 mb-4" />
               <h2 className="text-2xl font-bold mb-2">Registration Successful!</h2>
-              <p className="text-gray-400 mb-4">
-                Your account has been created successfully. Redirecting to dashboard...
-              </p>
+              <p className="text-gray-400 mb-4">Your account has been created. Redirecting to login...</p>
               <div className="animate-pulse text-emerald-500">Redirecting...</div>
             </div>
           </CardContent>

@@ -50,54 +50,52 @@ export default function Login() {
     try {
       setLoading(true)
 
-      // For demo purposes, allow any login
-      // Store authentication state with user info
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem(
-        "currentUser",
-        JSON.stringify({
+      // For demo purposes, let's bypass the API call and use client-side authentication
+      // This ensures the app works even if the API routes have issues
+      if (
+        (formData.email === "demo@example.com" && formData.password === "password123") ||
+        (formData.email === "test@astu.edu.et" && formData.password === "test123")
+      ) {
+        // Create mock user data
+        const userData = {
+          id: 1,
+          fullName: formData.email === "demo@example.com" ? "Demo User" : "Test User",
           email: formData.email,
-          fullName: formData.email
-            .split("@")[0]
-            .replace(/[.]/g, " ")
-            .replace(/\b\w/g, (l) => l.toUpperCase()),
-          loginTime: new Date().toISOString(),
-        }),
-      )
+        }
 
-      // Create some sample files for the user
-      const sampleFiles = [
-        {
-          id: "1",
-          name: "Project_Proposal.pdf",
-          type: "pdf",
-          size: "2.4 MB",
-          uploadDate: new Date().toISOString(),
-          encrypted: true,
-          ipfsHash: "QmT7fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG1",
-          blockchainTx: "0x3a8e7f9a2d5b4c6e8f1d2a3b4c5d6e7f8a9b0c1d",
+        // Store user data in localStorage
+        localStorage.setItem("isAuthenticated", "true")
+        localStorage.setItem("currentUser", JSON.stringify(userData))
+
+        // Redirect to dashboard
+        router.push("/dashboard")
+        return
+      }
+
+      // If not using the demo credentials, try the API
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        {
-          id: "2",
-          name: "Financial_Report_Q2.xlsx",
-          type: "spreadsheet",
-          size: "1.8 MB",
-          uploadDate: new Date(Date.now() - 86400000).toISOString(), // Yesterday
-          encrypted: true,
-          ipfsHash: "QmX9fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG2",
-          blockchainTx: "0x4b9f8e0a3c6d5b4a7c8e9d0f1a2b3c4d5e6f7a8b9",
-        },
-      ]
-      localStorage.setItem("userFiles", JSON.stringify(sampleFiles))
+        body: JSON.stringify(formData),
+      })
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const data = await response.json()
 
-      // Force a reload to update the navbar state
-      window.location.href = "/dashboard"
-    } catch (err) {
-      setError("Login failed. Please try again.")
-      console.error(err)
+      if (!response.ok) {
+        throw new Error(data.error || "Login failed")
+      }
+
+      // Store user data in localStorage
+      localStorage.setItem("isAuthenticated", "true")
+      localStorage.setItem("currentUser", JSON.stringify(data.user))
+
+      // Redirect to dashboard
+      router.push("/dashboard")
+    } catch (err: any) {
+      console.error("Login error:", err)
+      setError(err.message || "Login failed. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -134,7 +132,7 @@ export default function Login() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="john@example.com"
+                placeholder="demo@example.com"
                 value={formData.email}
                 onChange={handleChange}
                 className="bg-gray-700 border-gray-600"
@@ -147,6 +145,7 @@ export default function Login() {
                 id="password"
                 name="password"
                 type="password"
+                placeholder="password123"
                 value={formData.password}
                 onChange={handleChange}
                 className="bg-gray-700 border-gray-600"
@@ -156,6 +155,16 @@ export default function Login() {
                   Forgot password?
                 </Link>
               </div>
+            </div>
+
+            <div className="bg-gray-700 p-3 rounded-md border border-gray-600 text-sm">
+              <p className="font-medium mb-1">Demo Credentials:</p>
+              <p>
+                Email: <span className="text-emerald-400">demo@example.com</span>
+              </p>
+              <p>
+                Password: <span className="text-emerald-400">password123</span>
+              </p>
             </div>
 
             <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>

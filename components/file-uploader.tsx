@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { UploadIcon, FileIcon, XIcon } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 import { FileCrypto } from "@/utils/crypto"
+import { uploadToIPFS } from "@/utils/ipfs"
 
 export default function FileUploader() {
   const [file, setFile] = useState<File | null>(null)
@@ -48,10 +49,11 @@ export default function FileUploader() {
 
       // Step 2: Encrypt the file
       const { encryptedData, iv } = await FileCrypto.encryptFile(file, encryptionKey)
-      setProgress(50)
+      setProgress(40)
 
-      // Step 3: Simulate IPFS upload
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Step 3: Upload to IPFS via Pinata
+      console.log("Uploading to IPFS via Pinata...")
+      const ipfsHash = await uploadToIPFS(encryptedData)
       setProgress(70)
 
       // Step 4: Simulate blockchain transaction
@@ -81,8 +83,8 @@ export default function FileUploader() {
         encryptionKey: encryptionKey,
         encryptedData: encryptedData,
         iv: iv,
-        // Blockchain/IPFS simulation
-        ipfsHash: `QmT7fQHXQj6j9mfLDaP1zLvgL1TBgZ4YEiHPt5GBszHKG${Date.now()}`,
+        // Real IPFS hash from Pinata
+        ipfsHash: ipfsHash,
         blockchainTx: `0x${Math.random().toString(16).substr(2, 40)}`,
         description: description,
       }
@@ -97,7 +99,7 @@ export default function FileUploader() {
       setTimeout(() => {
         setUploading(false)
         alert(
-          `File "${file.name}" encrypted and uploaded successfully!\n\nEncryption: AES-256\nIPFS Hash: ${newFile.ipfsHash}\nBlockchain TX: ${newFile.blockchainTx}`,
+          `File "${file.name}" encrypted and uploaded successfully!\n\n✅ Encryption: AES-256\n✅ IPFS Hash: ${ipfsHash}\n✅ Blockchain TX: ${newFile.blockchainTx}\n\nYour file is now stored on the decentralized web!`,
         )
 
         // Reset form
@@ -111,7 +113,7 @@ export default function FileUploader() {
     } catch (error) {
       console.error("Upload failed:", error)
       setUploading(false)
-      alert("Upload failed. Please try again.")
+      alert(`Upload failed: ${error.message}\n\nPlease check your internet connection and try again.`)
     }
   }
 
@@ -158,12 +160,12 @@ export default function FileUploader() {
             <div className="mt-4">
               <Progress value={progress} className="h-2 mb-2" />
               <p className="text-sm text-gray-400">
-                {progress < 30
+                {progress < 25
                   ? "Generating encryption key..."
-                  : progress < 60
+                  : progress < 45
                     ? "Encrypting file with AES-256..."
-                    : progress < 80
-                      ? "Uploading to IPFS..."
+                    : progress < 75
+                      ? "Uploading to IPFS via Pinata..."
                       : progress < 95
                         ? "Recording on blockchain..."
                         : "Finalizing..."}

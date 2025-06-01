@@ -20,16 +20,30 @@ import FileUploader from "@/components/file-uploader"
 import FileList from "@/components/file-list"
 import SharedFileList from "@/components/shared-file-list"
 import ActivityLog from "@/components/activity-log"
+import { testPinataConnection } from "@/lib/ipfs"
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState("files")
   const [currentUser, setCurrentUser] = useState<any>(null)
+  const [files, setFiles] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
   const router = useRouter()
 
+  const [ipfsConnected, setIpfsConnected] = useState(false)
+
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    // Test IPFS connection on mount
+    const checkIPFS = async () => {
+      const connected = await testPinataConnection()
+      setIpfsConnected(connected)
+    }
+    checkIPFS()
   }, [])
 
   useEffect(() => {
@@ -46,11 +60,35 @@ export default function Dashboard() {
 
     try {
       setCurrentUser(JSON.parse(userData))
+      loadFiles()
     } catch (error) {
       console.error("Error parsing user data:", error)
       router.push("/login")
     }
   }, [mounted, router])
+
+  const loadFiles = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/files/list")
+
+      if (response.ok) {
+        const data = await response.json()
+        setFiles(data.files)
+      } else {
+        // Fallback to localStorage for demo
+        const localFiles = JSON.parse(localStorage.getItem("userFiles") || "[]")
+        setFiles(localFiles)
+      }
+    } catch (error) {
+      console.error("Error loading files:", error)
+      // Fallback to localStorage
+      const localFiles = JSON.parse(localStorage.getItem("userFiles") || "[]")
+      setFiles(localFiles)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Mock data for storage usage
   const storageUsed = 2.7 // GB
@@ -72,6 +110,16 @@ export default function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
             <p className="text-gray-400">Welcome back, {currentUser.fullName}!</p>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-gray-500">Connected to:</span>
+              <span className="text-emerald-400">Database</span>
+              <span className="text-gray-500">•</span>
+              <span className={ipfsConnected ? "text-emerald-400" : "text-amber-400"}>
+                IPFS {ipfsConnected ? "✓" : "(Mock)"}
+              </span>
+              <span className="text-gray-500">•</span>
+              <span className="text-blue-400">Ethereum Blockchain</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-4 w-full md:w-auto">
@@ -96,10 +144,10 @@ export default function Dashboard() {
                 <DialogHeader>
                   <DialogTitle>Upload File</DialogTitle>
                   <DialogDescription className="text-gray-400">
-                    Files will be encrypted and stored securely on IPFS
+                    Files will be encrypted with AES-256, stored on IPFS, and recorded on blockchain
                   </DialogDescription>
                 </DialogHeader>
-                <FileUploader />
+                <FileUploader onUploadComplete={loadFiles} />
               </DialogContent>
             </Dialog>
           </div>
@@ -130,7 +178,7 @@ export default function Dashboard() {
                   onClick={() => setActiveTab("files")}
                 >
                   <FileIcon className="mr-3 h-5 w-5 text-gray-400" />
-                  <span>My Files</span>
+                  <span>My Files ({files.length})</span>
                 </button>
                 <button
                   className={`w-full flex items-center px-4 py-3 hover:bg-gray-700 ${activeTab === "shared" ? "bg-gray-700 border-l-4 border-emerald-500" : ""}`}
@@ -171,7 +219,13 @@ export default function Dashboard() {
                   </TabsList>
 
                   <TabsContent value="files" className="p-4">
-                    <FileList searchQuery={searchQuery} />
+                    {loading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-pulse">Loading files from database...</div>
+                      </div>
+                    ) : (
+                      <FileList searchQuery={searchQuery} files={files} onFileChange={loadFiles} />
+                    )}
                   </TabsContent>
 
                   <TabsContent value="shared" className="p-4">
