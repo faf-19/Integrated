@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { UploadIcon, FileIcon, XIcon } from "lucide-react"
 import { DialogFooter } from "@/components/ui/dialog"
 import { FileCrypto } from "@/utils/crypto"
-import { uploadToIPFS } from "@/utils/ipfs"
+import { uploadToIPFS } from "@/lib/ipfs"
+import { recordActivity } from "@/utils/activity-logger"
 
 export default function FileUploader() {
   const [file, setFile] = useState<File | null>(null)
@@ -58,6 +59,7 @@ export default function FileUploader() {
 
       // Step 4: Simulate blockchain transaction
       await new Promise((resolve) => setTimeout(resolve, 1000))
+      const blockchainTx = `0x${Math.random().toString(16).substr(2, 40)}`
       setProgress(90)
 
       // Step 5: Store file metadata with encryption info
@@ -85,12 +87,24 @@ export default function FileUploader() {
         iv: iv,
         // Real IPFS hash from Pinata
         ipfsHash: ipfsHash,
-        blockchainTx: `0x${Math.random().toString(16).substr(2, 40)}`,
+        blockchainTx: blockchainTx,
         description: description,
       }
 
       existingFiles.unshift(newFile)
       localStorage.setItem("userFiles", JSON.stringify(existingFiles))
+
+      // Record activity
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+      recordActivity({
+        type: "upload",
+        fileName: file.name,
+        user: currentUser.fullName || "You",
+        timestamp: new Date().toISOString(),
+        status: "success",
+        blockchainTx: blockchainTx,
+      })
+
       setProgress(100)
 
       // Trigger storage event for other tabs

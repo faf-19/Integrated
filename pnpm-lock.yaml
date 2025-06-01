@@ -1107,8 +1107,8 @@ packages:
   '@types/node@22.15.29':
     resolution: {integrity: sha512-LNdjOkUDlU1RZb8e1kOIUpN1qQUlzGkEtbVNo53vbrwDg5om6oduhm4SiUaPW5ASTXhAiP0jInWG8Qx9fVlOeQ==}
 
-  '@types/pg@8.15.3':
-    resolution: {integrity: sha512-/566mCD6naXuDdCO9LN9IBGYuuLfmCbew3PjdDT1LTQNAWWNYk/zTSNQ4I8oq4F4tN9p4UWQieJyFmuvK98A4A==}
+  '@types/pg@8.15.4':
+    resolution: {integrity: sha512-I6UNVBAoYbvuWkkU3oosC8yxqH21f4/Jc4DK71JLG3dT2mdlGe1z+ep/LQGXaKaOgcvUrsQoPRqfgtMcvZiJhg==}
 
   '@types/react-dom@19.0.0':
     resolution: {integrity: sha512-1KfiQKsH1o00p9m5ag12axHQSb3FOU9H20UTrujVSkNhuCrRHiQWFqgEnTNK5ZNfnzZv8UWrnXVqCmCF9fgY3w==}
@@ -2125,7 +2125,7 @@ snapshots:
   '@neondatabase/serverless@1.0.0':
     dependencies:
       '@types/node': 22.15.29
-      '@types/pg': 8.15.3
+      '@types/pg': 8.15.4
 
   '@next/env@15.2.4': {}
 
@@ -2898,7 +2898,7 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/pg@8.15.3':
+  '@types/pg@8.15.4':
     dependencies:
       '@types/node': 22.0.0
       pg-protocol: 1.10.0

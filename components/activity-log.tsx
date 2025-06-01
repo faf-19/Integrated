@@ -1,61 +1,49 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
-import { UploadIcon, Share2Icon, EyeIcon, DownloadIcon, TrashIcon, ExternalLinkIcon } from "lucide-react"
+import { UploadIcon, Share2Icon, EyeIcon, DownloadIcon, TrashIcon, ExternalLinkIcon, HistoryIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-// Mock activity data
-const mockActivities = [
-  {
-    id: "1",
-    type: "upload",
-    fileName: "Project_Proposal.pdf",
-    user: "You",
-    timestamp: "2025-05-28T14:32:00",
-    status: "success",
-    blockchainTx: "0x3a8e7f9a2d5b4c6e8f1d2a3b4c5d6e7f8a9b0c1d",
-  },
-  {
-    id: "2",
-    type: "share",
-    fileName: "Project_Proposal.pdf",
-    user: "You",
-    sharedWith: "Bisrat Abraham",
-    timestamp: "2025-05-28T14:40:00",
-    status: "success",
-    blockchainTx: "0x4b9f8e0a3c6d5b4a7c8e9d0f1a2b3c4d5e6f7a8b9",
-  },
-  {
-    id: "3",
-    type: "view",
-    fileName: "Team_Budget_2025.xlsx",
-    user: "You",
-    sharedBy: "Samuel Habtamu",
-    timestamp: "2025-05-28T15:15:00",
-    status: "success",
-    blockchainTx: "0x5c0f9e1a4d7b6c5a8d9e0f1a2b3c4d5e6f7a8b9c0",
-  },
-  {
-    id: "4",
-    type: "download",
-    fileName: "Financial_Report_Q2.xlsx",
-    user: "Fasika Zergaw",
-    timestamp: "2025-05-27T11:20:00",
-    status: "success",
-    blockchainTx: "0x6d1e0f2a5b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e",
-  },
-  {
-    id: "5",
-    type: "delete",
-    fileName: "Old_Draft.docx",
-    user: "You",
-    timestamp: "2025-05-26T09:30:00",
-    status: "success",
-    blockchainTx: "0x7e2f1g3a6b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e",
-  },
-]
-
 export default function ActivityLog() {
+  const [activities, setActivities] = useState<any[]>([])
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    if (!mounted) return
+
+    // Load activities from localStorage
+    const loadActivities = () => {
+      try {
+        const storedActivities = localStorage.getItem("userActivities")
+        if (storedActivities) {
+          setActivities(JSON.parse(storedActivities))
+        } else {
+          setActivities([])
+        }
+      } catch (error) {
+        console.error("Error loading activities:", error)
+        setActivities([])
+      }
+    }
+
+    loadActivities()
+
+    // Listen for storage changes
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "userActivities") {
+        loadActivities()
+      }
+    }
+
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
+  }, [mounted])
+
   const getActivityIcon = (type: string) => {
     switch (type) {
       case "upload":
@@ -110,13 +98,22 @@ export default function ActivityLog() {
     window.open(`https://sepolia.etherscan.io/tx/${txHash}`, "_blank")
   }
 
+  if (!mounted) {
+    return (
+      <div className="text-center py-8">
+        <div className="animate-pulse">Loading...</div>
+      </div>
+    )
+  }
+
   return (
     <div>
-      {mockActivities.length === 0 ? (
+      {activities.length === 0 ? (
         <div className="text-center py-8">
-          <EyeIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+          <HistoryIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
           <h3 className="text-lg font-medium mb-2">No activity yet</h3>
           <p className="text-sm text-gray-400">Your file activities will appear here</p>
+          <p className="text-sm text-gray-400 mt-2">Try uploading or sharing a file to see activity</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -127,7 +124,7 @@ export default function ActivityLog() {
             </Badge>
           </div>
 
-          {mockActivities.map((activity) => (
+          {activities.map((activity) => (
             <div
               key={activity.id}
               className="flex items-start justify-between p-4 border border-gray-700 rounded-lg hover:bg-gray-750"
@@ -170,11 +167,20 @@ export default function ActivityLog() {
             </div>
           ))}
 
-          <div className="text-center pt-4">
-            <Button variant="outline" className="border-gray-600 text-gray-300 hover:bg-gray-700">
-              Load More Activities
-            </Button>
-          </div>
+          {activities.length > 0 && (
+            <div className="text-center pt-4">
+              <Button
+                variant="outline"
+                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                onClick={() => {
+                  localStorage.removeItem("userActivities")
+                  setActivities([])
+                }}
+              >
+                Clear Activity Log
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

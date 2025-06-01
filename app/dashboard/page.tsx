@@ -114,11 +114,9 @@ export default function Dashboard() {
               <span className="text-gray-500">Connected to:</span>
               <span className="text-emerald-400">Database</span>
               <span className="text-gray-500">•</span>
-              <span className={ipfsConnected ? "text-emerald-400" : "text-amber-400"}>
-                IPFS {ipfsConnected ? "✓" : "(Mock)"}
-              </span>
+              <span className="text-blue-400">IPFS (Mock)</span>
               <span className="text-gray-500">•</span>
-              <span className="text-blue-400">Ethereum Blockchain</span>
+              <span className="text-purple-400">Ethereum Blockchain</span>
             </div>
           </div>
 

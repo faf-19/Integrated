@@ -29,6 +29,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { FileCrypto } from "@/utils/crypto"
+import { recordActivity } from "@/utils/activity-logger"
 
 const FileList = ({ searchQuery }: { searchQuery: string }) => {
   const [userFiles, setUserFiles] = useState<any[]>([])
@@ -103,15 +104,76 @@ const FileList = ({ searchQuery }: { searchQuery: string }) => {
   }
 
   const handleShareSubmit = () => {
-    alert(
-      `File "${selectedFile.name}" shared with ${shareEmail} successfully!\n\nShared encryption key and access permissions have been recorded on the blockchain.`,
-    )
-    setShareDialogOpen(false)
-    setShareEmail("")
-    setPermissions({ view: true, download: false, edit: false })
+    if (!selectedFile || !shareEmail) return
+
+    try {
+      // Get current user
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+
+      // Create shared file entry
+      const sharedFile = {
+        ...selectedFile,
+        sharedBy: currentUser.fullName || "Unknown User",
+        sharedByEmail: currentUser.email || "unknown@example.com",
+        sharedDate: new Date().toISOString(),
+        permissions: Object.keys(permissions).filter((key) => permissions[key as keyof typeof permissions]),
+        shareId: `share_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      }
+
+      // Get existing shared files for the recipient
+      const existingSharedFiles = JSON.parse(localStorage.getItem(`sharedFiles_${shareEmail}`) || "[]")
+      existingSharedFiles.unshift(sharedFile)
+
+      // Store shared files for the recipient
+      localStorage.setItem(`sharedFiles_${shareEmail}`, JSON.stringify(existingSharedFiles))
+
+      // Also store in a global shared files registry for demo purposes
+      const globalSharedFiles = JSON.parse(localStorage.getItem("globalSharedFiles") || "[]")
+      globalSharedFiles.unshift({
+        ...sharedFile,
+        recipientEmail: shareEmail,
+      })
+      localStorage.setItem("globalSharedFiles", JSON.stringify(globalSharedFiles))
+
+      // Record activity
+      recordActivity({
+        type: "share",
+        fileName: selectedFile.name,
+        user: currentUser.fullName || "You",
+        sharedWith: shareEmail,
+        timestamp: new Date().toISOString(),
+        status: "success",
+        blockchainTx: `0x${Math.random().toString(16).substr(2, 40)}`,
+      })
+
+      // Trigger storage event to update other tabs
+      window.dispatchEvent(new Event("storage"))
+
+      alert(
+        `File "${selectedFile.name}" shared with ${shareEmail} successfully!\n\n✅ Shared encryption key and access permissions\n✅ Recorded on blockchain\n✅ Recipient can now access the file\n\nThe recipient will see this file in their "Shared with Me" section.`,
+      )
+
+      setShareDialogOpen(false)
+      setShareEmail("")
+      setPermissions({ view: true, download: false, edit: false })
+    } catch (error) {
+      console.error("Error sharing file:", error)
+      alert("Failed to share file. Please try again.")
+    }
   }
 
   const handleViewFile = (file: any) => {
+    // Record view activity
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+    recordActivity({
+      type: "view",
+      fileName: file.name,
+      user: currentUser.fullName || "You",
+      timestamp: new Date().toISOString(),
+      status: "success",
+      blockchainTx: file.blockchainTx || `0x${Math.random().toString(16).substr(2, 40)}`,
+    })
+
     const fileInfo = `
 File: ${file.name}
 Size: ${file.size}
@@ -170,6 +232,17 @@ Encryption Details:
       // Clean up the URL
       setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
 
+      // Record download activity
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+      recordActivity({
+        type: "download",
+        fileName: file.name,
+        user: currentUser.fullName || "You",
+        timestamp: new Date().toISOString(),
+        status: "success",
+        blockchainTx: file.blockchainTx || `0x${Math.random().toString(16).substr(2, 40)}`,
+      })
+
       alert(
         `File "${file.name}" decrypted and downloaded successfully!\n\nThe file has been decrypted using AES-256 and is now available in your downloads folder.`,
       )
@@ -190,6 +263,18 @@ Encryption Details:
       const updatedFiles = userFiles.filter((f) => f.id !== file.id)
       localStorage.setItem("userFiles", JSON.stringify(updatedFiles))
       setUserFiles(updatedFiles)
+
+      // Record delete activity
+      const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}")
+      recordActivity({
+        type: "delete",
+        fileName: file.name,
+        user: currentUser.fullName || "You",
+        timestamp: new Date().toISOString(),
+        status: "success",
+        blockchainTx: `0x${Math.random().toString(16).substr(2, 40)}`,
+      })
+
       alert(`File "${file.name}" deleted successfully!\n\nDeletion has been recorded on the blockchain.`)
     }
   }
@@ -304,6 +389,9 @@ Encryption Details:
                 onChange={(e) => setShareEmail(e.target.value)}
                 className="bg-gray-700 border-gray-600"
               />
+              <p className="text-xs text-gray-400">
+                💡 Tip: Use demo@example.com or test@astu.edu.et to test sharing between demo accounts
+              </p>
             </div>
 
             <div className="space-y-3">
