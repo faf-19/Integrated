@@ -17,7 +17,7 @@ export default function About() {
     {
       name: "Fasika Zergaw",
       id: "UGR/23653/13",
-      role: "Backend Developer & API Integration",
+      role: "Backend Developer & blockchian develper",
       department: "CSE",
       description: "Building robust APIs and integrating blockchain with traditional databases and IPFS storage.",
       email: "fasika.z@astu.edu.et",
@@ -158,21 +158,21 @@ export default function About() {
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-emerald-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold">June 1, 2025</p>
+                  <p className="font-semibold">May 20, 2025</p>
                   <p className="text-sm text-gray-400">Development Started</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-blue-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold">June 10, 2025</p>
+                  <p className="font-semibold">May 25, 2025</p>
                   <p className="text-sm text-gray-400">Beta Testing Phase</p>
                 </div>
               </div>
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-purple-500 rounded-full mr-4"></div>
                 <div>
-                  <p className="font-semibold">June 15, 2025</p>
+                  <p className="font-semibold">June 1, 2025</p>
                   <p className="text-sm text-gray-400">Final Submission</p>
                 </div>
               </div>
